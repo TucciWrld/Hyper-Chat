@@ -1,0 +1,6 @@
+{
+  "name": "Hyper Chat",
+  "description": "A modern WhatsApp-inspired messaging application with Hyper AI, developed by Tucci Cyber Nation and Kawooya Raymond. Styled in green and black accents.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
