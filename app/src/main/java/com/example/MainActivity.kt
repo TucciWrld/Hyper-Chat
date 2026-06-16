@@ -216,10 +216,9 @@ fun HyperChatAppContainer(viewModel: HyperViewModel) {
     } else {
         // App workspace loaded with transitions
         Box(modifier = Modifier.fillMaxSize()) {
-            Crossfade(targetState = activeChatId != null, label = "active_pane_transition") { isChatActive ->
-                if (isChatActive) {
+            Crossfade(targetState = activeChatId, label = "active_pane_transition") { activeId ->
+                if (activeId != null) {
                     // Render Chat Details Page
-                    val activeId = activeChatId!!
                     val activeChat = chats.find { it.id == activeId }
                     if (activeChat != null) {
                         ChatScreen(
