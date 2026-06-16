@@ -1,6 +1,6 @@
 {
-  "name": "Hyper Chat",
-  "description": "A modern WhatsApp-inspired messaging application with Hyper AI, developed by Tucci Cyber Nation and Kawooya Raymond. Styled in green and black accents.",
+  "name": "Hyper Chat Admin",
+  "description": "Enterprise Control Center for the Hyper Chat network. Developed by Tucci Cyber Nation and Kawooya Raymond. Real-time admin oversight, database console, user moderation, role-based security, analytics, and policy center.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

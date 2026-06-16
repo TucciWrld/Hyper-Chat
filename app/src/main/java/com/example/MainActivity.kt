@@ -1,22 +1,23 @@
 package com.example
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
-import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Fingerprint
-import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -29,13 +30,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ui.screens.*
 import com.example.ui.theme.CyberGreen
 import com.example.ui.theme.DarkMidnight
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.SlateCard
 import com.example.ui.viewmodel.HyperViewModel
-import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,265 +53,251 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun HyperChatAppContainer(viewModel: HyperViewModel) {
-    // Collect UI state from ViewModel
-    val currentTab by viewModel.currentTab.collectAsState()
-    val activeChatId by viewModel.activeChatId.collectAsState()
-    val searchQuery by viewModel.searchQuery.collectAsState()
-    val activeCall by viewModel.activeCall.collectAsState()
-    val activeStatus by viewModel.activeStatus.collectAsState()
-    val showNewChatDialog by viewModel.showNewChatDialog.collectAsState()
-
-    val userName by viewModel.userName.collectAsState()
-    val userAvatar by viewModel.userAvatar.collectAsState()
-    val isFingerprintEnabled by viewModel.isFingerprintEnabled.collectAsState()
-    val isPasscodeEnabled by viewModel.isPasscodeEnabled.collectAsState()
-    val disappearingDuration by viewModel.disappearingMessagesDuration.collectAsState()
-    val isWallpaperActive by viewModel.isCustomWallpaperActive.collectAsState()
-    val accentColorName by viewModel.accentColorName.collectAsState()
-    val storageSizeMb by viewModel.storageSizeMb.collectAsState()
-
     val chats by viewModel.chats.collectAsState(initial = emptyList())
     val users by viewModel.users.collectAsState(initial = emptyList())
-    val calls by viewModel.calls.collectAsState(initial = emptyList())
-    val statuses by viewModel.statuses.collectAsState(initial = emptyList())
-    val activeMessages by viewModel.activeChatMessages.collectAsState()
-    val isTyping by viewModel.isTyping.collectAsState()
-    val smartReplies by viewModel.smartReplies.collectAsState()
 
-    // Screen State flow helpers
-    var hasUnlockedSecurityByPass by rememberSaveable { mutableStateOf(false) }
-    var showOnboarding by rememberSaveable { mutableStateOf(true) }
-    var isShowingSettingsScreen by remember { mutableStateOf(false) }
+    var isAdminAuthenticated by rememberSaveable { mutableStateOf(false) }
+    var adminEmail by rememberSaveable { mutableStateOf("kawooya@tucci.cyber") }
+    var adminPasscode by rememberSaveable { mutableStateOf("") }
+    var admin2FACode by rememberSaveable { mutableStateOf("") }
+    var selectedRole by remember { mutableStateOf(AdminRole.SUPER_ADMIN) }
 
-    // Biometric scanner simulated ripple
-    var biometricScanRipple by remember { mutableStateOf(false) }
+    var biometricScanning by remember { mutableStateOf(false) }
 
-    // Start Screen: Biometric / Passcode Lock Overlay Shield
-    val isAppLocked = (isFingerprintEnabled || isPasscodeEnabled) && !hasUnlockedSecurityByPass
-
-    if (isAppLocked) {
+    if (isAdminAuthenticated) {
+        AdminDashboardScreen(
+            currentAdminName = if (adminEmail.contains("@")) adminEmail.substringBefore("@").replaceFirstChar { it.uppercase() } else "Kawooya Raymond",
+            adminRole = selectedRole,
+            onLogout = { isAdminAuthenticated = false },
+            allUsersFromDb = users,
+            allChatsFromDb = chats,
+            onResetUserPassword = { viewModel.resetUserPassword(it) },
+            onVerifyUser = { viewModel.verifyUserStatus(it) },
+            onSuspendUser = { uid, susp -> viewModel.suspendUserStatus(uid, susp) },
+            onDeleteUser = { viewModel.deleteUserForever(it) },
+            onCreateChannel = { viewModel.createChannel(it) }
+        )
+    } else {
+        // Admin Login Page
         Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .testTag("app_shield_lock_overlay"),
+            modifier = Modifier.fillMaxSize(),
             color = DarkMidnight
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
                     .padding(24.dp)
                     .statusBarsPadding()
                     .navigationBarsPadding(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // Header details
+                // Header Display
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(top = 40.dp)
+                    modifier = Modifier.padding(top = 20.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Security,
-                        contentDescription = "Shield Active",
-                        tint = CyberGreen,
-                        modifier = Modifier.size(54.dp)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "Hyper Chat Enforced Security",
+                        text = "TUCCI CYBER NATION | ENTERPRISE",
+                        color = CyberGreen,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 10.sp,
+                        letterSpacing = 2.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Hyper Chat Admin",
                         color = Color.White,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Black,
+                        fontSize = 28.sp
                     )
                     Text(
-                        text = "AES-256 military-grade protection active",
+                        text = "Secured Supabase Command Terminal",
                         color = Color.Gray,
                         fontSize = 12.sp,
-                        modifier = Modifier.padding(top = 4.dp)
+                        modifier = Modifier.padding(top = 2.dp)
                     )
                 }
 
-                // Center click scanner representation
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Center Credential Inputs Card
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(Color(0xFF161616))
+                        .border(1.dp, Color(0x13FFFFFF), RoundedCornerShape(24.dp))
+                        .padding(20.dp)
+                ) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Text(
+                            text = "ADMINISTRATOR CREDENTIALS",
+                            color = Color.LightGray,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            letterSpacing = 1.sp
+                        )
+
+                        // Role Selection Row
+                        Column {
+                            Text("Select Node Authorization Role", color = Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                AdminRole.values().forEach { r ->
+                                    val isSelected = selectedRole == r
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(if (isSelected) CyberGreen else Color(0x0FFFFFFF))
+                                            .border(1.dp, if (isSelected) CyberGreen else Color(0x0CFFFFFF), RoundedCornerShape(10.dp))
+                                            .clickable { selectedRole = r }
+                                            .padding(vertical = 10.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = r.displayName.substringBefore(" "),
+                                            color = if (isSelected) Color.Black else Color.White,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Email Textfield
+                        OutlinedTextField(
+                            value = adminEmail,
+                            onValueChange = { adminEmail = it },
+                            label = { Text("Agent Email identifier", color = Color.Gray) },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = CyberGreen,
+                                unfocusedBorderColor = Color.DarkGray
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Passcode Field
+                        OutlinedTextField(
+                            value = adminPasscode,
+                            onValueChange = { adminPasscode = it },
+                            label = { Text("Pin Passcode key (4-digit)", color = Color.Gray) },
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = CyberGreen,
+                                unfocusedBorderColor = Color.DarkGray
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // 2FA Authentication
+                        OutlinedTextField(
+                            value = admin2FACode,
+                            onValueChange = { admin2FACode = it },
+                            label = { Text("Secured 2-Factor Token (Enter any 4 digits)", color = Color.Gray) },
+                            placeholder = { Text("e.g. 7843", color = Color.Gray) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = CyberGreen,
+                                unfocusedBorderColor = Color.DarkGray
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+
+                // Biometric Fingerprint Decryptor
                 Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(vertical = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(130.dp)
+                            .size(90.dp)
                             .clip(CircleShape)
-                            .background(if (biometricScanRipple) CyberGreen.copy(alpha = 0.3f) else SlateCard)
+                            .background(if (biometricScanning) CyberGreen.copy(alpha = 0.2f) else SlateCard)
                             .clickable {
-                                biometricScanRipple = true
+                                biometricScanning = true
                             }
                             .padding(8.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Fingerprint,
-                            contentDescription = "Tap to Scan preset token",
-                            tint = if (biometricScanRipple) CyberGreen else Color.LightGray,
-                            modifier = Modifier.size(72.dp)
+                            contentDescription = "Scan Fingerprint",
+                            tint = if (biometricScanning) CyberGreen else Color.LightGray,
+                            modifier = Modifier.size(48.dp)
                         )
                     }
-
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = if (biometricScanRipple) "Decrypting secure hashes..." else "Scan Fingerprint to Unlock App",
-                        color = if (biometricScanRipple) CyberGreen else Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold
+                        text = if (biometricScanning) "Decryption Hashing complete ✓" else "Tap Scanner to verify biometric key",
+                        color = if (biometricScanning) CyberGreen else Color.Gray,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
 
-                // Launched effect for bypass simulation
-                if (biometricScanRipple) {
-                    LaunchedEffect(key1 = true) {
-                        delay(1200)
-                        hasUnlockedSecurityByPass = true
-                        biometricScanRipple = false
-                    }
-                }
-
-                // Help text
-                Text(
-                    text = "Tucci Cyber Nation & Kawooya Raymond Encryption Standard",
-                    color = Color.DarkGray,
-                    fontSize = 10.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-            }
-        }
-    } else if (showOnboarding) {
-        // Step Onboarding Form (Phone OTP verified selection preset)
-        OnboardingScreen(
-            currentName = userName,
-            currentAvatar = userAvatar,
-            onComplete = { name, avatar ->
-                viewModel.updateProfile(name, avatar)
-                showOnboarding = false
-            }
-        )
-    } else if (isShowingSettingsScreen) {
-        // Whole screen Settings overlay
-        SettingsScreen(
-            currentName = userName,
-            currentAvatar = userAvatar,
-            isFingerprint = isFingerprintEnabled,
-            isPasscode = isPasscodeEnabled,
-            disappearingMins = disappearingDuration,
-            isWallpaper = isWallpaperActive,
-            accentName = accentColorName,
-            storageMb = storageSizeMb,
-            onProfileUpdate = { name, avatar -> viewModel.updateProfile(name, avatar) },
-            onFingerprintChange = { viewModel.toggleFingerprint(it) },
-            onPasscodeChange = { viewModel.togglePasscode(it) },
-            onDisappearingChange = { viewModel.setDisappearingMessages(it) },
-            onWallpaperChange = { viewModel.setWallpaperActive(it) },
-            onAccentChange = { viewModel.setAccentColor(it) },
-            onClearCache = { viewModel.clearCache() },
-            onBack = { isShowingSettingsScreen = false }
-        )
-    } else {
-        // App workspace loaded with transitions
-        Box(modifier = Modifier.fillMaxSize()) {
-            Crossfade(targetState = activeChatId, label = "active_pane_transition") { activeId ->
-                if (activeId != null) {
-                    // Render Chat Details Page
-                    val activeChat = chats.find { it.id == activeId }
-                    if (activeChat != null) {
-                        ChatScreen(
-                            chatTitle = activeChat.title,
-                            chatAvatar = activeChat.avatarUrl,
-                            chatType = activeChat.type,
-                            messages = activeMessages,
-                            smartReplies = smartReplies,
-                            isTyping = isTyping,
-                            isWallpaperEnabled = isWallpaperActive,
-                            onSendMessage = { text, replyToId, replyToText, type, attachment, duration, pollOpts ->
-                                viewModel.sendMessage(text, type, replyToId, replyToText, attachment, duration, false, pollOpts)
-                            },
-                            onCallClick = { isVideo ->
-                                viewModel.startCall(activeChat.id.replace("chat_", ""), isVideo)
-                            },
-                            onBack = { viewModel.selectChat(null) }
+                // Action Buttons
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            if (adminEmail.isBlank()) {
+                                Toast.makeText(viewModel.getApplication(), "Please provide email ID", Toast.LENGTH_SHORT).show()
+                            } else if (adminPasscode.length < 4) {
+                                Toast.makeText(viewModel.getApplication(), "Please enter the 4-digit pincode passphrase", Toast.LENGTH_SHORT).show()
+                            } else if (!biometricScanning) {
+                                Toast.makeText(viewModel.getApplication(), "Touch Scanner to decrypt administrative session hashes first", Toast.LENGTH_SHORT).show()
+                            } else {
+                                isAdminAuthenticated = true
+                                Toast.makeText(viewModel.getApplication(), "Supabase link initialized. Access Granted.", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = CyberGreen, contentColor = Color.Black),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .testTag("admin_terminal_login_btn")
+                    ) {
+                        Text(
+                            text = "Authenticate Admin Node Session",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
                         )
-                    } else {
-                        viewModel.selectChat(null)
                     }
-                } else {
-                    // Render Dashboard workspace tabs (Chats, Updates/Statuses, Communities, Calls)
-                    MainScreen(
-                        currentTab = currentTab,
-                        chats = chats,
-                        users = users,
-                        calls = calls,
-                        statuses = statuses,
-                        searchQuery = searchQuery,
-                        onTabSelected = { viewModel.setTab(it) },
-                        onSearchChange = { viewModel.updateSearchQuery(it) },
-                        onSelectChat = { viewModel.selectChat(it) },
-                        onStartCall = { url, isVid -> viewModel.startCall(url, isVid) },
-                        onPostStatus = { text, img, type -> viewModel.postStatus(text, img, type) },
-                        onViewStatus = { viewModel.viewStatusItem(it) },
-                        onCreateChatWithUser = { viewModel.createChatWithUser(it) },
-                        onCreateGroup = { nameList, userIds -> viewModel.createGroupChat(nameList, userIds) },
-                        onClearCallHistory = { viewModel.clearCallHistory() },
-                        onDeleteChat = { viewModel.deleteChatById(it) },
-                        onSettingsClick = { isShowingSettingsScreen = true },
-                        onTriggerNewChatDialog = { viewModel.toggleNewChatDialog(it) },
-                        showNewChatDialog = showNewChatDialog
-                    )
-                }
-            }
 
-            // FULLSCREEN SECURE IMMERSIVE CALL MODAL (Audio & Video)
-            AnimatedVisibility(
-                visible = activeCall != null,
-                enter = slideInVertically { height -> height } + fadeIn(),
-                exit = slideOutVertically { height -> height } + fadeOut()
-            ) {
-                activeCall?.let { call ->
-                    CallScreen(
-                        userName = call.userName,
-                        userAvatar = call.userAvatar,
-                        callType = call.type,
-                        direction = call.direction,
-                        onAccept = { viewModel.acceptCall() },
-                        onEndCall = { dur -> viewModel.endCall(dur) }
-                    )
-                }
-            }
-
-            // FULLSCREEN IMMERSIVE STATUS STORY VIEW
-            AnimatedVisibility(
-                visible = activeStatus != null,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                activeStatus?.let { status ->
-                    StatusDetailScreen(
-                        statusId = status.id,
-                        userName = status.userName,
-                        userAvatar = status.userAvatar,
-                        mediaUrl = status.mediaUrl,
-                        text = status.text,
-                        type = status.type,
-                        timestamp = "Posted Today, 2:40 PM",
-                        viewers = status.viewers,
-                        reactions = status.reactions,
-                        onReactionAdded = { emoji -> viewModel.addStatusReaction(status.id, emoji) },
-                        onClose = { viewModel.viewStatusItem(null) }
+                    Text(
+                        text = "Developed by Tucci Cyber Nation & Kawooya Raymond under Supabase Realtime Protocols.",
+                        color = Color.DarkGray,
+                        fontSize = 10.sp,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 14.sp,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
         }
     }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(text = "Hello $name!", modifier = modifier)
 }

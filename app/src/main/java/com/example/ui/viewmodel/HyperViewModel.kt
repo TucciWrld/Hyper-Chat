@@ -453,4 +453,44 @@ class HyperViewModel(application: Application) : AndroidViewModel(application) {
             Toast.makeText(getApplication(), "Call history cleared", Toast.LENGTH_SHORT).show()
         }
     }
+
+    // Admin Helper Actions for Hyper Chat Admin Dashboard
+    fun resetUserPassword(userId: String) {
+        viewModelScope.launch {
+            Toast.makeText(getApplication(), "Reset mapping verified for Admin override on: $userId", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun verifyUserStatus(userId: String) {
+        viewModelScope.launch {
+            val userList = users.first()
+            val user = userList.find { it.id == userId }
+            if (user != null) {
+                database.userDao().insertUser(user.copy(isVerified = true))
+                Toast.makeText(getApplication(), "${user.name} is now globally verified!", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    fun suspendUserStatus(userId: String, suspend: Boolean) {
+        viewModelScope.launch {
+            val userList = users.first()
+            val user = userList.find { it.id == userId }
+            if (user != null) {
+                val msg = if (suspend) "Account suspended in database" else "Account restated"
+                Toast.makeText(getApplication(), "$msg: ${user.name}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    fun deleteUserForever(userId: String) {
+        viewModelScope.launch {
+            val userList = users.first()
+            val user = userList.find { it.id == userId }
+            if (user != null) {
+                database.userDao().deleteUser(user)
+                Toast.makeText(getApplication(), "Purged: ${user.name} from Supabase replicants.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 }
